@@ -1,0 +1,200 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "disabled_providers": [],
+
+  // Primary: Qwen3.8 27B. Gemma 12B handles titles/summaries cheaply.
+  "model": "lmstudio/qwen/qwen3.8-27b",
+  "small_model": "lmstudio/google/gemma-4-12b-qat",
+
+  "provider": {
+    "lmstudio": {
+      "name": "LM Studio (local)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://127.0.0.1:1234/v1",
+        "apiKey": "<your key>",
+        // Local inference is slow to first token on a cold JIT load.
+        // Hosted-API defaults abort mid-load.
+        "timeout": false,
+        "headerTimeout": 600000,
+        "chunkTimeout": 300000
+      },
+      // Every "context" below is what LM Studio ACTUALLY loads, measured via
+      // loaded_context_length — not the advertised max_context_length.
+      "models": {
+        // Inkling 2 Mini (Thinking Machines), Q4_K_M GGUF, loaded in LM Studio at 32K context.
+        "thinkingmachines/inkling-2-mini": {
+          "name": "Inkling 2 Mini",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": true,
+          "temperature": true,
+          "limit": { "context": 49152, "input": 49152, "output": 16000 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] },
+          // Reasoning level per session: pick low / medium / high in OpenCode's model menu.
+          "variants": {
+            "low": { "reasoningEffort": "low" },
+            "medium": { "reasoningEffort": "medium" },
+            "high": { "reasoningEffort": "high" }
+          }
+        },
+        // Unsloth UD-Q4_K_XL (Mainline_Support layout), loaded at 64K. Added 25 Nov for round 2.
+        "unsloth/inkling-2-mini": {
+          "name": "Inkling 2 Mini (Unsloth 48K)",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": true,
+          "temperature": true,
+          "limit": { "context": 49152, "input": 49152, "output": 16000 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] },
+          "variants": {
+            "low": { "reasoningEffort": "low" },
+            "medium": { "reasoningEffort": "medium" },
+            "high": { "reasoningEffort": "high" }
+          }
+        },
+        "qwen/qwen3.8-27b": {
+          "name": "Qwen3.8 27B",
+          "family": "qwen3.8",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": true,
+          "temperature": true,
+          // Clamps to 42496 regardless of what is requested.
+          // MLX build has no max_new_tokens, so output uses OpenCode's own
+          // ceiling (OUTPUT_TOKEN_MAX = 32000). "input" is required alongside:
+          // without it OpenCode reserves the full 32000 and compacts at ~10.5k.
+          "limit": { "context": 42496, "input": 42496, "output": 32000 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] }
+        },
+        "prism-ml/bonsai-27b": {
+          "name": "Ternary Bonsai 27B (8.5 GB)",
+          "family": "qwen3.5",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": false,
+          "temperature": true,
+          // Loads at 65536 here with 57% RAM still free (measured 28 Oct).
+          // Tool calls verified through LM Studio's API.
+          "limit": { "context": 65536, "input": 65536, "output": 32000 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text"], "output": ["text"] }
+        },
+        "qwen/qwen3.6-27b": {
+          "name": "Qwen3.6 27B",
+          "family": "qwen3.5",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": true,
+          "temperature": true,
+          "limit": { "context": 42496, "output": 8192 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] }
+        },
+        "qwen/qwen3.6-35b-a3b": {
+          "name": "Qwen3.6 35B A3B",
+          "family": "qwen3.5-moe",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": true,
+          "temperature": true,
+          "limit": { "context": 34560, "output": 8192 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] }
+        },
+        "google/gemma-4-12b-qat": {
+          "name": "Gemma 4 12B QAT",
+          "family": "gemma4",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": true,
+          "temperature": true,
+          // GGUF: llama.cpp reserves the whole KV cache at load; 131072 is the
+          // verified ceiling (262144 fails outright).
+          "limit": { "context": 131072, "output": 8192 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] }
+        },
+        "google/gemma-4-26b-a4b-qat": {
+          "name": "Gemma 4 26B A4B QAT",
+          "family": "gemma4",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": true,
+          "temperature": true,
+          "limit": { "context": 80128, "output": 8192 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] }
+        }
+
+        // qwen3-coder-30b and gpt-oss-20b were REMOVED from LM Studio, so their
+        // entries are deleted here — referencing them would 404.
+        // text-embedding-nomic-embed-text-v1.5 omitted: embeddings, not chat.
+      }
+    },
+
+    // oMLX app server on :8000. Open oMLX.app first (it auto-starts the
+    // server) — nothing listens on 8000 otherwise.
+    "omlx": {
+      "name": "MLX (local)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://127.0.0.1:8000/v1",
+        // oMLX enforces its API key (settings.json auth.api_key); without it every call 401s.
+        "apiKey": "<your key>",
+        "timeout": false,
+        "headerTimeout": 600000
+      },
+      "models": {
+        // Same files as LM Studio's download (oMLX model_dirs includes
+        // ~/.lmstudio/models/lmstudio-community).
+        // limit: oMLX's memory guard rejected a 35.5k-token prompt on this
+        // 32 GB Mac; with these limits OpenCode auto-compacts at ~24.5k.
+        "Qwen3.8-27B-MLX-4bit": { "name": "Qwen3.8-27B-MLX-4bit", "tool_call": true, "reasoning": true, "limit": { "context": 32768, "output": 8192 } },
+        // Inkling MLX (oQ4e + MTP), needs oMLX 0.8.1+. Added 25 Nov for round 2.
+        "Inkling-2-Mini-oQ4e-mtp": {
+          "name": "Inkling 2 Mini (MLX 64K)",
+          "tool_call": true, "reasoning": true, "attachment": true, "temperature": true,
+          "limit": { "context": 65536, "input": 65536, "output": 16000 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] },
+          "variants": { "low": { "reasoningEffort": "low" }, "medium": { "reasoningEffort": "medium" }, "high": { "reasoningEffort": "high" } }
+        },
+        "Qwen3.6-35B-A3B-4bit": { "name": "Qwen3.6-35B-A3B-4bit" },
+        "Qwen3.6-27B-4bit": { "name": "Qwen3.6-27B-4bit" }
+      }
+    },
+
+    // MTPLX app server on :8000 (start it from MTPLX.app). CLI equivalent:
+    //   mtplx serve --model Youssofal/Qwen3.8-27B-MTPLX-Optimized-Speed --profile sustained
+    //     --host 127.0.0.1 --port 8000
+    //     --yes
+    "mtplx": {
+      "name": "MTPLX (local)",
+      "npm": "@ai-sdk/openai-compatible",
+      "options": {
+        "baseURL": "http://127.0.0.1:8000/v1",
+        "apiKey": "<your key>",
+        "timeout": false,
+        "headerTimeout": 600000,
+        "chunkTimeout": 300000
+      },
+      "models": {
+        "mtplx-qwen38-27b-optimized-speed": {
+          "name": "Qwen3.8 27B · MTPLX",
+          "family": "qwen3.8",
+          "tool_call": true,
+          "reasoning": true,
+          "attachment": true,
+          "temperature": true,
+          // MTPLX.app default (KV quantization Off) serves 8192 context here.
+          "limit": { "context": 8192, "output": 4096 },
+          "cost": { "input": 0, "output": 0 },
+          "modalities": { "input": ["text", "image"], "output": ["text"] }
+        }
+      }
+    }
+  }
+}
